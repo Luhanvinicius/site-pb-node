@@ -38,7 +38,9 @@ function showUserPanel(user) {
     
     document.getElementById('userLogin').textContent = user.login || 'Usuário';
     document.getElementById('userName').textContent = user.name || user.login;
-    document.getElementById('userRank').textContent = user.rank || '0';
+    // Mostrar patente com imagem
+    const rankImg = `<img src="/imagens/patentes/${user.rank || 0}.png" width="20" onerror="this.src='/images/patentes/0.png';" />`;
+    document.getElementById('userRank').innerHTML = rankImg + ' ' + (user.rank || '0');
     document.getElementById('userExp').textContent = formatNumber(user.exp || 0);
     document.getElementById('userGP').textContent = formatNumber(user.gp || 0);
     document.getElementById('userMoney').textContent = formatNumber(user.money || 0);
@@ -49,7 +51,8 @@ function showUserPanel(user) {
     // Show menu items
     document.getElementById('userMenu').style.display = 'block';
     
-    if (user.access_level >= 5) {
+    // Admin para access_level >= 3 (como no PHP original)
+    if (user.access_level >= 3) {
         document.getElementById('adminMenu').style.display = 'block';
     }
 }

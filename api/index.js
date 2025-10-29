@@ -16,7 +16,10 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
+// Servir arquivos estáticos (HTML, CSS, JS, imagens)
 app.use(express.static(path.join(__dirname, '../public')));
+// Servir imagens de patentes (compatibilidade com PHP)
+app.use('/imagens', express.static(path.join(__dirname, '../../imagens')));
 
 // Conexão direta com PostgreSQL - EXATAMENTE como no PHP
 // PHP usa: host=localhost ou host=37.148.132.118, user=postgres, password=1988, dbname=postgres
@@ -314,6 +317,137 @@ app.get('/api/health/db', async (req, res) => {
       database: 'disconnected',
       message: error.message 
     });
+  }
+});
+
+// Rotas para páginas específicas
+app.get('/ranking', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/ranking.html'));
+});
+
+app.get('/admin', checkSession, async (req, res) => {
+  try {
+    const userId = req.cookies.session_id || req.headers['x-session-id'];
+    const userResult = await pool.query('SELECT * FROM accounts WHERE player_id = $1', [userId]);
+    
+    if (userResult.rows.length === 0 || !userResult.rows[0].access_level || userResult.rows[0].access_level < 3) {
+      return res.status(403).send('Acesso negado. Necessário access_level >= 3');
+    }
+    
+    res.sendFile(path.join(__dirname, '../public/admin.html'));
+  } catch (error) {
+    console.error('Admin access error:', error);
+    res.status(500).send('Erro ao verificar permissões');
+  }
+});
+
+// API de ranking completo
+app.get('/api/ranking-full', async (req, res) => {
+  try {
+    const page = parseInt(req.query.pagina) || 1;
+    const limit = 20;
+    const offset = (page - 1) * limit;
+
+    // Query exata do PHP
+    const query = `
+      SELECT * FROM accounts 
+      WHERE rank < 53 AND player_name <> '' AND ban_obj_id = 0
+      ORDER BY exp DESC 
+      LIMIT $1 OFFSET $2
+    `;
+
+    const result = await pool.query(query, [limit, offset]);
+    
+    // Calcular K/D e Win/Lost
+    const players = result.rows.map((player, index) => {
+      const kills = player.kills_count || 0;
+      const deaths = player.deaths_count || 0;
+      const wins = player.fights_win || 0;
+      const lost = player.fights_lost || 0;
+      
+      const kd = kills + deaths > 0 ? Math.round((kills / (kills + deaths)) * 100) : 0;
+      const wl = wins + lost > 0 ? Math.round((wins / (wins + lost)) * 100) : 0;
+      
+      return {
+        position: offset + index + 1,
+        player_name: player.player_name,
+        rank: player.rank,
+        exp: player.exp,
+        kd: kd,
+        wl: wl,
+        escapes: player.escapes || 0,
+        kills_count: kills,
+        deaths_count: deaths,
+        fights_win: wins,
+        fights_lost: lost
+      };
+    });
+
+    // Total de páginas
+    const totalResult = await pool.query(
+      "SELECT COUNT(*) as count FROM accounts WHERE rank < 53 AND player_name <> '' AND ban_obj_id = 0"
+    );
+    const total = parseInt(totalResult.rows[0].count);
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({ players, totalPages, currentPage: page, total });
+  } catch (error) {
+    console.error('Ranking error:', error);
+    res.status(500).json({ error: 'Erro ao buscar ranking' });
+  }
+});
+
+// Buscar jogador por nick
+app.get('/api/ranking/search', async (req, res) => {
+  try {
+    const nick = req.query.nick;
+    if (!nick) {
+      return res.status(400).json({ error: 'Nick é obrigatório' });
+    }
+
+    const query = `
+      SELECT * FROM accounts 
+      WHERE player_name LIKE $1 AND rank < 53 
+      ORDER BY exp DESC
+      LIMIT 1
+    `;
+
+    const result = await pool.query(query, [`%${nick}%`]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const player = result.rows[0];
+    
+    // Calcular posição
+    const positionResult = await pool.query(
+      'SELECT COUNT(*) as count FROM accounts WHERE exp > $1 AND rank < 52',
+      [player.exp]
+    );
+    const position = parseInt(positionResult.rows[0].count) + 1;
+
+    // Calcular K/D e Win/Lost
+    const kills = player.kills_count || 0;
+    const deaths = player.deaths_count || 0;
+    const wins = player.fights_win || 0;
+    const lost = player.fights_lost || 0;
+    
+    const kd = kills + deaths > 0 ? Math.round((kills / (kills + deaths)) * 100) : 0;
+    const wl = wins + lost > 0 ? Math.round((wins / (wins + lost)) * 100) : 0;
+
+    res.json({
+      position: position,
+      player_name: player.player_name,
+      rank: player.rank,
+      exp: player.exp,
+      kd: kd,
+      wl: wl,
+      escapes: player.escapes || 0
+    });
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ error: 'Erro ao buscar jogador' });
   }
 });
 
