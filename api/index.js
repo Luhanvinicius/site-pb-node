@@ -18,7 +18,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Conexão direta com PostgreSQL - sem helpers
+// Conexão direta com PostgreSQL - EXATAMENTE como no PHP
+// PHP usa: host=localhost ou host=37.148.132.118, user=postgres, password=1988, dbname=postgres
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:1988@37.148.132.118:5432/postgres';
 
 const pool = new Pool({
@@ -29,14 +30,18 @@ const pool = new Pool({
        connectionString.includes('heroku')
     ? { rejectUnauthorized: false } 
     : false,
-  max: 10, // Pool de conexões
+  max: 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  connectionTimeoutMillis: 10000, // Aumentado para 10 segundos
 });
 
-// Log de erro na conexão
+// Testar conexão na inicialização
+pool.query('SELECT 1')
+  .then(() => console.log('✅ Conexão PostgreSQL estabelecida'))
+  .catch((err) => console.error('❌ Erro ao conectar PostgreSQL:', err.message));
+
 pool.on('error', (err, client) => {
-  console.error('Unexpected error on idle client', err);
+  console.error('❌ Erro no pool PostgreSQL:', err);
 });
 
 // Helper function para hash de senha (compatível com PHP antigo)
@@ -69,41 +74,63 @@ app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     
+    console.log('🔐 Tentativa de login:', username); // Debug
+    
     if (!username || !password) {
       return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
     }
 
-    const login = antiInjection(username);
-    const senha = antiInjection(password);
+    // EXATAMENTE como no PHP
+    const login = antiInjection(username).trim();
+    const senha = antiInjection(password).trim();
     const encryptedPass = encryptPassword(senha);
 
+    console.log('🔍 Query:', `SELECT * FROM accounts WHERE login = $1 AND password = $2`);
+    console.log('🔍 Login (sanitizado):', login);
+    console.log('🔍 Senha (hash):', encryptedPass.substring(0, 20) + '...');
+
+    // Query EXATA do PHP: SELECT * FROM accounts WHERE login = '$login' AND password = '$encript'
     const query = 'SELECT * FROM accounts WHERE login = $1 AND password = $2';
     const result = await pool.query(query, [login, encryptedPass]);
     
+    console.log('📊 Resultados encontrados:', result.rows.length);
+    
     if (result.rows.length === 0) {
+      console.log('❌ Login falhou: usuário não encontrado');
       return res.status(401).json({ error: 'Login ou senha incorretos' });
     }
 
     const user = result.rows[0];
+    console.log('✅ Login bem-sucedido:', user.login, 'ID:', user.player_id);
     
-    res.cookie('session_id', user.player_id, { 
-      httpOnly: true, 
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000
-    });
+    // Cookie configurado
+    const cookieOptions = [
+      `session_id=${user.player_id}`,
+      'HttpOnly',
+      'Path=/',
+      'Max-Age=86400',
+      process.env.NODE_ENV === 'production' ? 'Secure' : '',
+      process.env.NODE_ENV === 'production' ? 'SameSite=None' : 'SameSite=Lax'
+    ].filter(Boolean).join('; ');
+
+    res.setHeader('Set-Cookie', cookieOptions);
 
     res.json({
       success: true,
       user: {
         id: user.player_id,
         login: user.login,
-        name: user.player_name,
-        access_level: user.access_level
+        name: user.player_name || user.login,
+        access_level: user.access_level || 0
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Erro ao processar login' });
+    console.error('❌ Erro no login:', error);
+    console.error('❌ Stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Erro ao processar login',
+      message: error.message 
+    });
   }
 });
 
