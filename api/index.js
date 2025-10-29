@@ -18,11 +18,30 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:1988@localhost:5432/postgres',
-  ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('supabase') ? { rejectUnauthorized: false } : false
-});
+// Database connection - usando helper compartilhado se disponível, senão criar pool aqui
+let pool;
+
+// Tentar usar helper db.js (serverless), senão criar pool aqui (Render/Express)
+try {
+  const dbHelper = require('./db');
+  pool = dbHelper.getPool();
+} catch (e) {
+  // Se db.js não estiver disponível (ambiente local), criar pool direto
+  const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:1988@localhost:5432/postgres';
+  
+  pool = new Pool({
+    connectionString: connectionString,
+    ssl: connectionString.includes('37.148.132.118') || 
+         connectionString.includes('supabase') || 
+         connectionString.includes('amazonaws') || 
+         connectionString.includes('heroku')
+      ? { rejectUnauthorized: false } 
+      : false,
+    max: 10, // Render pode usar mais conexões (não é serverless)
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+  });
+}
 
 // Helper function para hash de senha (compatível com PHP antigo)
 function encryptPassword(password) {
@@ -267,10 +286,13 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-// Servidor local - sempre roda quando executar este arquivo
-const PORT = process.env.PORT || 3001; // Porta 3001 para evitar conflito com porta 3000
+// Servidor Express - exportar app para uso externo (Render, Vercel, etc)
+// Para rodar localmente, use server.js ou node api/index.js
 
-app.listen(PORT, () => {
+// Apenas inicia servidor se executado diretamente E não estiver em ambiente serverless
+if (require.main === module && !process.env.VERCEL && process.env.RENDER !== 'true') {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => {
     console.log(`
 ╔══════════════════════════════════════════╗
 ║   🎯 TACTICAL - Servidor Local            ║
@@ -280,7 +302,8 @@ app.listen(PORT, () => {
 ║   ✅ Servidor rodando!                   ║
 ╚══════════════════════════════════════════╝
     `);
-});
+  });
+}
 
-// Exportar app (pode ser útil)
+// Exportar app para Render.com (server.js usa isso)
 module.exports = app;

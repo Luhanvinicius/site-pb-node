@@ -2,11 +2,11 @@
   "name": "tactical-site",
   "version": "1.0.0",
   "description": "Tactical - Site de Jogo",
-  "main": "api/index.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node api/index.js",
-    "dev": "node api/index.js",
-    "build": "echo 'Build complete'"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "build": "npm install"
   },
   "keywords": [
     "tactical",
