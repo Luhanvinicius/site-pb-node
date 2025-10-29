@@ -18,30 +18,26 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Database connection - usando helper compartilhado se disponível, senão criar pool aqui
-let pool;
+// Conexão direta com PostgreSQL - sem helpers
+const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:1988@37.148.132.118:5432/postgres';
 
-// Tentar usar helper db.js (serverless), senão criar pool aqui (Render/Express)
-try {
-  const dbHelper = require('./db');
-  pool = dbHelper.getPool();
-} catch (e) {
-  // Se db.js não estiver disponível (ambiente local), criar pool direto
-  const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:1988@localhost:5432/postgres';
-  
-  pool = new Pool({
-    connectionString: connectionString,
-    ssl: connectionString.includes('37.148.132.118') || 
-         connectionString.includes('supabase') || 
-         connectionString.includes('amazonaws') || 
-         connectionString.includes('heroku')
-      ? { rejectUnauthorized: false } 
-      : false,
-    max: 10, // Render pode usar mais conexões (não é serverless)
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
-  });
-}
+const pool = new Pool({
+  connectionString: connectionString,
+  ssl: connectionString.includes('37.148.132.118') || 
+       connectionString.includes('supabase') || 
+       connectionString.includes('amazonaws') || 
+       connectionString.includes('heroku')
+    ? { rejectUnauthorized: false } 
+    : false,
+  max: 10, // Pool de conexões
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+});
+
+// Log de erro na conexão
+pool.on('error', (err, client) => {
+  console.error('Unexpected error on idle client', err);
+});
 
 // Helper function para hash de senha (compatível com PHP antigo)
 function encryptPassword(password) {
@@ -264,7 +260,18 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+// Health check simples - sem depender do banco (evita timeout no Render)
 app.get('/api/health', async (req, res) => {
+  // Retorna OK imediatamente - não testa banco (evita timeout)
+  res.status(200).json({ 
+    status: 'ok', 
+    server: 'running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health check completo em rota diferente (opcional)
+app.get('/api/health/db', async (req, res) => {
   try {
     const result = await pool.query('SELECT 1');
     res.json({ 
