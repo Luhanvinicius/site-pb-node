@@ -1,0 +1,52 @@
+========================================
+🔧 SOLUÇÃO: PORTA 3000 OCUPADA
+========================================
+
+✅ OPÇÃO 1: USAR VERCEL DEV (RECOMENDADO)
+------------------------------------------
+Execute:
+    vercel dev
+
+Ou:
+    npm run dev
+
+Isso usa o ambiente correto do Vercel e não precisa de porta específica.
+
+========================================
+
+✅ OPÇÃO 2: MATAR PROCESSO NA PORTA 3000
+------------------------------------------
+1. Encontre o processo:
+   netstat -ano | findstr :3000
+
+2. Mate o processo (substitua [PID] pelo número encontrado):
+   taskkill /PID [PID] /F
+
+3. Depois rode:
+   npm start
+
+========================================
+
+✅ OPÇÃO 3: USAR PORTA DIFERENTE (3001)
+------------------------------------------
+Execute:
+    npm run start:local
+
+Ou manualmente:
+    PORT=3001 node api/index.js
+
+Depois acesse: http://localhost:3001
+
+========================================
+⚠️ IMPORTANTE
+========================================
+
+Este projeto foi feito para VERCEL, não para rodar direto com Node.js.
+
+O correto é usar:
+    vercel dev
+
+Ou fazer deploy direto no Vercel!
+
+========================================
+

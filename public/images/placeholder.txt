@@ -1,0 +1,6 @@
+Coloque aqui as imagens:
+- favicon.ico
+- logo.png
+- banner.jpg
+etc.
+

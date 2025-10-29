@@ -1,0 +1,94 @@
+========================================
+🎯 TACTICAL - PROJETO NODE.JS
+========================================
+
+✅ PROJETO COMPLETO CRIADO E PRONTO PARA VERCEL!
+
+📁 ESTRUTURA:
+tactical/
+├── api/              → Funções serverless do Vercel
+├── public/           → Arquivos estáticos (HTML, CSS, JS)
+├── package.json      → Dependências Node.js
+├── vercel.json       → Configuração do Vercel
+└── README.md         → Documentação completa
+
+========================================
+🚀 COMO FAZER DEPLOY NO VERCEL:
+========================================
+
+1. INSTALAR DEPENDÊNCIAS:
+   cd tactical
+   npm install
+
+2. CRIAR CONTA NO VERCEL:
+   - Acesse: https://vercel.com
+   - Crie conta gratuita
+
+3. CONECTAR REPOSITÓRIO:
+   - No Vercel: "Add New Project"
+   - Conecte seu GitHub
+   - Selecione pasta "tactical"
+
+4. CONFIGURAR VARIÁVEL DE AMBIENTE:
+   - Settings > Environment Variables
+   - Adicione: DATABASE_URL
+   - Valor: postgresql://user:pass@host:5432/db
+
+5. FAZER DEPLOY:
+   - Clique em "Deploy"
+   - Aguarde 2-3 minutos
+   - Pronto! Site no ar!
+
+========================================
+📋 BANCO DE DADOS NECESSÁRIO:
+========================================
+
+Você precisa de um PostgreSQL externo:
+- Supabase (grátis, recomendado)
+- Heroku Postgres (grátis)
+- Railway PostgreSQL (grátis)
+- Neon (grátis)
+
+O banco deve ter as mesmas tabelas:
+- accounts
+- noticias  
+- web_records
+
+========================================
+🔍 TESTAR LOCALMENTE:
+========================================
+
+1. Criar arquivo .env:
+   DATABASE_URL=postgresql://user:pass@host:5432/db
+
+2. Instalar dependências:
+   npm install
+
+3. Rodar:
+   npm run dev
+   (ou: vercel dev)
+
+4. Acessar: http://localhost:3000
+
+========================================
+✨ DIFERENÇAS DO PROJETO PHP:
+========================================
+
+✅ Layout completamente novo (Tactical)
+✅ Totalmente em Node.js
+✅ Pronto para Vercel
+✅ APIs RESTful modernas
+✅ Interface responsiva
+
+========================================
+📝 PRÓXIMOS PASSOS:
+========================================
+
+1. Adicionar imagens em: public/images/
+2. Personalizar cores em: public/assets/style.css
+3. Ajustar texto "Tactical" no HTML
+4. Configurar DATABASE_URL no Vercel
+5. Fazer deploy!
+
+========================================
+
