@@ -20,19 +20,21 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Conexão direta com PostgreSQL - EXATAMENTE como no PHP
 // PHP usa: host=localhost ou host=37.148.132.118, user=postgres, password=1988, dbname=postgres
+// IMPORTANTE: Banco da VPS não usa SSL!
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:1988@37.148.132.118:5432/postgres';
 
 const pool = new Pool({
   connectionString: connectionString,
-  ssl: connectionString.includes('37.148.132.118') || 
-       connectionString.includes('supabase') || 
+  // VPS não suporta SSL - apenas serviços cloud precisam
+  ssl: connectionString.includes('supabase') || 
        connectionString.includes('amazonaws') || 
-       connectionString.includes('heroku')
+       connectionString.includes('heroku') ||
+       connectionString.includes('neon.tech')
     ? { rejectUnauthorized: false } 
-    : false,
+    : false, // VPS usa conexão sem SSL
   max: 10,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000, // Aumentado para 10 segundos
+  connectionTimeoutMillis: 10000,
 });
 
 // Testar conexão na inicialização
